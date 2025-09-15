@@ -6,7 +6,6 @@ const Homepage = () => {
   return (
     <>
       <main >
-        {" "}
         {/* clear fixed navbar */}
         <section id="home" className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 text-white min-h-[100vh]">
           <div className="container mx-auto px-6 py-20 md:py-28">

@@ -3,19 +3,21 @@ import { Route, Routes, Navigate } from "react-router-dom";
 import Homepage from "./pages/Homepage";
 import { Navbar } from "./components/Navbar";
 import Footer from "./components/Footer";
-import Honda from "./pages/Honda";
+import PartsFinder from "./pages/PartsFinder";
 
 const App = () => {
   return (
-    <>
+      <div className="min-h-screen flex flex-col">
       <Navbar />
-      <Routes>
-        <Route path="/" element={<Homepage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-        <Route path="/honda" element={<Honda />} />
-      </Routes>
+      <main className="flex-1 ">
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/parts-finder" element={<PartsFinder />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
       <Footer />
-    </>
+    </div>
   );
 };
 

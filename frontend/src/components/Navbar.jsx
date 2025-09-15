@@ -36,14 +36,14 @@ export const Navbar = () => {
   const navClass = ({ isActive }) =>
     `transition-colors duration-200 ${
       isActive
-        ? "text-red-400 font-semibold border-b-2 border-red-400"
-        : "text-white hover:text-red-800"
+        ? "text-red-400 font-bold border-b-2 border-red-400"
+        : "text-white font-bold hover:text-red-700"
     }`;
   const phone = "+94770127459";
 
   return (
     <header
-      className={`fixed bg-gray-950  top-0 left-0 w-full z-50 ${
+      className={`fixed bg-gray-950  top-0 left-0 w-full z-50  ${
         showHeader ? "translate-y-0" : "-translate-y-full"
       }`}
     >
@@ -58,17 +58,17 @@ export const Navbar = () => {
             />
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-12 text-lg lg:ml-50">
+          <nav className="hidden md:flex items-center space-x-12 text-lg lg:ml-40">
             <NavLink to="/" end className={navClass}>
               Home
             </NavLink>
-            <a href="#brands" className="text-white hover:text-red-800">
+            <a href="/#brands" className="text-white font-bold hover:text-red-700 ">
               Brands
             </a>
-            <a href="#footer" className="text-white hover:text-red-800">
+            <a href="#footer" className="text-white font-bold hover:text-red-700">
               About Us
             </a>
-            <a href="#footer" className="text-white hover:text-red-800">
+            <a href="#footer" className="text-white font-bold hover:text-red-700">
               Contact
             </a>
           </nav>
@@ -85,7 +85,7 @@ export const Navbar = () => {
                 id="site-search"
                 type="search"
                 placeholder="Search parts, brands..."
-                className="w-full bg-gray-800 text-white placeholder-gray-400 rounded-full px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-600"
+                className="w-full bg-gray-700 text-white bold placeholder-gray-400 rounded-full px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-600"
               />
               <button
                 type="submit"
@@ -98,7 +98,7 @@ export const Navbar = () => {
         </div> */}
 
         {/* Right: cart, search (mobile), menu */}
-        <div className="flex  items-center space-x-5 bg-gray-700 px-3 py-2 rounded-3xl ">
+        <div className="flex  items-center space-x-5 bg-gray-700 px-3 py-2 rounded-3xl ml-2">
           {/* on mobile show search icon */}
           {/* <button
             className="text-white text-2xl hidden"
