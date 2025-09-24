@@ -43,7 +43,7 @@ export const Navbar = () => {
 
   return (
     <header
-      className={`fixed bg-gray-950  top-0 left-0 w-full z-50  ${
+      className={`fixed bg-gray-950/75  top-0 left-0 w-full z-50  ${
         showHeader ? "translate-y-0" : "-translate-y-full"
       }`}
     >

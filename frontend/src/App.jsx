@@ -12,8 +12,8 @@ const App = () => {
       <main className="flex-1 ">
         <Routes>
           <Route path="/" element={<Homepage />} />
-          <Route path="/parts-finder" element={<PartsFinder />} />
           <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="brands/:brandName" element={<PartsFinder />} />
         </Routes>
       </main>
       <Footer />
