@@ -1,14 +1,16 @@
-import React from "react";
 import categories from "../assets/Categories";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import brandData from "../assets/brandsData";
 import { FiSearch, FiX } from "react-icons/fi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import API from "../services/api";
+
 const PartsFinder = () => {
+  const { brandName } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  // URL params
-  const initialBrand = searchParams.get("brand") || "";
+
+  // URL params - prefer path param first, then query param
+  const initialBrand = brandName || searchParams.get("brand") || "";
   const initialCategory = searchParams.get("category") || "";
   const initialQuery = searchParams.get("q") || "";
 
@@ -17,27 +19,83 @@ const PartsFinder = () => {
   const [categoryParam, setCategoryParam] = useState(initialCategory);
   const [searchValue, setSearchValue] = useState(initialQuery);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // keep selectedBrand in sync when the route path brand changes
+  useEffect(() => {
+    if (!brandName) return;
+    setSelectedBrand(brandName);
+    // remove redundant brand query param (keep filters only)
+    const params = {};
+    if (categoryParam) params.category = categoryParam;
+    if (searchValue) params.q = searchValue;
+    setSearchParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandName]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchData = async () => {
+      const apiBrand = brandName || selectedBrand;
+      if (!apiBrand) {
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await API.get(`/brands/${encodeURIComponent(apiBrand)}`, {
+          params: { q: searchValue || undefined, category: categoryParam || undefined },
+          signal: controller.signal,
+        });
+        setProducts(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError" || err?.name === "AbortError") {
+          return;
+        }
+        console.error("Error fetching products:", err);
+        setError(err.response?.data?.message || err.message || "Failed to fetch products");
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => controller.abort();
+  }, [brandName, selectedBrand, searchValue, categoryParam]);
 
   const updateFilter = (category) => {
     setCategoryParam(category);
-    // keep brand and search value in URL when updating category
     const params = {};
-    if (selectedBrand) params.brand = selectedBrand;
+    // only write brand query param when we are NOT using path param
+    if (!brandName && selectedBrand) params.brand = selectedBrand;
     if (category) params.category = category;
     if (searchValue) params.q = searchValue;
     setSearchParams(params);
   };
 
   const handleBrandChange = (e) => {
-    const brandName = e.target.value;
-    setSelectedBrand(brandName);
-    navigate(`/brands/${brandName.toLowerCase()}`);
-    
+    const b = e.target.value;
+    setSelectedBrand(b);
+
+    const params = {};
+    // only write brand query param when not on /brands/:brandName
+    if (!brandName && b) params.brand = b;
+    if (categoryParam) params.category = categoryParam;
+    if (searchValue) params.q = searchValue;
+    setSearchParams(params);
   };
 
   const handleSearch = () => {
     const params = {};
-    if (selectedBrand) params.brand = selectedBrand;
+    if (!brandName && selectedBrand) params.brand = selectedBrand;
     if (categoryParam) params.category = categoryParam;
     if (searchValue) params.q = searchValue;
     setSearchParams(params);
@@ -46,14 +104,15 @@ const PartsFinder = () => {
   const handleClear = () => {
     setSearchValue("");
     const params = {};
-    if (selectedBrand) params.brand = selectedBrand;
+    if (!brandName && selectedBrand) params.brand = selectedBrand;
     if (categoryParam) params.category = categoryParam;
     setSearchParams(params);
   };
+
   return (
     <div className="overflow-auto bg-gray-900 min-h-screen">
       {/* container */}
-      <div className="container mx-auto mt-25 px-4 ">
+      <div className="container mx-auto mt-20 px-4 ">
         {/* Search Bar - mobile friendly */}
         <div className="mb-6 w-full">
           <div className="flex flex-col md:flex-row md:items-center md:gap-4">
@@ -108,18 +167,16 @@ const PartsFinder = () => {
                     }
                   }}
                   className="w-full bg-gray-800 text-white text-base md:text-[18px] placeholder-gray-400 pl-11 pr-24 py-2 rounded-[8px] border border-blue-700 focus:outline-none focus:ring-2 focus:ring-red-600"
-                  placeholder="Search by parts name, brand, or category"
+                  placeholder="Search by parts name"
                 />
                 <div className="absolute inset-y-0 right-3 flex items-center gap-2">
                   <button
                     type="button"
                     aria-label="clear search"
                     onClick={handleClear}
-                    className={`text-gray-400 hover:text-white ${
-                      searchValue ? "" : "opacity-50 cursor-not-allowed"
-                    } hidden md:inline-flex`}
+                    className={`text-gray-400 hover:text-white ${searchValue ? "" : "opacity-50 cursor-not-allowed"} hidden md:inline-flex`}
                   >
-                    <FiX />
+                    <FiX className={`w-5 h-5 ${!searchValue ? "" : "hidden"}`} />
                   </button>
                   <button
                     type="button"
@@ -133,6 +190,7 @@ const PartsFinder = () => {
             </div>
           </div>
         </div>
+
         {/* Mobile: Search & Filters modal (opens when search icon clicked) */}
         {showSearchModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -169,6 +227,12 @@ const PartsFinder = () => {
                     value={selectedBrand}
                     onChange={(e) => {
                       setSelectedBrand(e.target.value);
+                      // immediately reflect in URL so effect runs
+                      const p = {};
+                      if (!brandName && e.target.value) p.brand = e.target.value;
+                      if (categoryParam) p.category = categoryParam;
+                      if (searchValue) p.q = searchValue;
+                      setSearchParams(p);
                     }}
                     className="w-full bg-gray-800 text-white px-3 py-2 rounded border border-gray-700"
                   >
@@ -216,16 +280,10 @@ const PartsFinder = () => {
                           setShowSearchModal(false);
                         }}
                         className={`flex items-center gap-2 text-sm p-2 rounded text-left ${
-                          categoryParam === c.name
-                            ? "bg-red-600 text-white"
-                            : "bg-gray-800 text-gray-200 hover:bg-gray-700"
+                          categoryParam === c.name ? "bg-red-600 text-white" : "bg-gray-800 text-gray-200 hover:bg-gray-700"
                         }`}
                       >
-                        <img
-                          src={c.image}
-                          alt=""
-                          className="h-5 w-5 object-contain"
-                        />
+                        <img src={c.image} alt="" className="h-5 w-5 object-contain" />
                         <span className="truncate">{c.name}</span>
                       </button>
                     ))}
@@ -233,12 +291,7 @@ const PartsFinder = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      handleClear();
-                    }}
-                    className="flex-1 bg-gray-700 text-white py-2 rounded"
-                  >
+                  <button onClick={() => { handleClear(); }} className="flex-1 bg-gray-700 text-white py-2 rounded">
                     Clear
                   </button>
                   <button
@@ -255,14 +308,34 @@ const PartsFinder = () => {
             </div>
           </div>
         )}
+
         {/* Main Content */}
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 items-start ">
-          <div className="col-span-3 order-1 md:order-2 lg:order-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 items-start mb-20 ">
+          <div className="col-span-3 order-2 md:order-2 lg:order-2">
             <div>
-              <div className=" p-4 rounded-md shadow-md"></div>
+              <div className="p-4 rounded-md shadow-md">
+                {error && <p className="text-red-400 text-center mb-2">{error}</p>}
+                {!selectedBrand ? (
+                  <p className="text-gray-300 text-center">Select a brand to view products.</p>
+                ) : loading ? (
+                  <p className="text-gray-300 text-center">Loading...</p>
+                ) : products.length === 0 ? (
+                  <p className="text-gray-300 text-center">No products found. Please adjust your search or filters.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {products.map((product) => (
+                      <li key={product._id || product.id} className="border-b border-gray-700 py-2">
+                        <h3 className="text-lg font-semibold text-white">{product.name}</h3>
+                        <p className="text-gray-400">{product.description}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
-          <aside className="sidebar col-span-1 order-2 md:order-1 lg:order-1 bg-gray-700/15 shadow-md mb-20 md:sticky md:top-20 md:h-[calc(100vh-6rem)] md:overflow-auto md:rounded">
+
+          <aside className="sidebar col-span-1 order-1 md:order-1 lg:order-1 bg-gray-700/15 shadow-md mb-20 md:sticky md:top-20 md:h-[calc(100vh-6rem)] md:overflow-auto md:rounded">
             <h2 className="sidebar-title text-white text-[20px] font-bold p-4 bg-gray-500/50 select-none md:rounded-t">
               Select Your Part Category
             </h2>
@@ -277,11 +350,7 @@ const PartsFinder = () => {
                     }`}
                     onClick={() => updateFilter(category.name)}
                   >
-                    <img
-                      src={category.image}
-                      alt={category.name}
-                      className="h-6 w-6 object-contain"
-                    />
+                    <img src={category.image} alt={category.name} className="h-6 w-6 object-contain" />
                     <span className="truncate">{category.name}</span>
                   </li>
                 );
