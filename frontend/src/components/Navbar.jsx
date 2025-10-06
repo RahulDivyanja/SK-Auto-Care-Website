@@ -14,7 +14,7 @@ export const Navbar = () => {
   const lastScrollY = useRef(0);
 
   // Determine if we are on the homepage
-  const showCart = location.pathname !== "/";
+  const showCart = location.pathname == "/payment/cart";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -212,4 +212,4 @@ export const Navbar = () => {
     </header>
   );
 };
-// ...existing code...
+

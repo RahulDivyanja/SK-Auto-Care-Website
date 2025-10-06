@@ -89,51 +89,45 @@ export const addProduct = async (req, res) => {
 // Get products by brand with optional search and category filter
 export const getFilteredProducts = async (req, res) => {
   try {
-    const brandName = req.params.brandName || req.query.brand || undefined; // from /brands/honda
-    const { q, category } = req.query; // ?q=Brake+pads&category=Brakes
+    const brandName = req.query.brand || req.params.brandName || undefined;
+    const { q, category } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit, 10) || 20, 1);
+    const skip = (page - 1) * limit;
+
+    // brand lookup (robust)
     let brand = null;
-    // Step 1: Find brandId from brandName
     if (brandName) {
       const normalized = String(brandName).trim();
-      
-       brand = await Brand.findOne({
+      brand = await Brand.findOne({
         $or: [
-          { slug: normalized.toLowerCase() }, // if you later add slug field
-          {
-            name: new RegExp(
-              `^${normalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-              "i"
-            ),
-          },
+          { slug: normalized.toLowerCase() },
+          { name: new RegExp(`^${normalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
         ],
       });
+      if (!brand) return res.status(404).json({ message: "Brand not found" });
     }
 
-    if (!brand && brandName) {
-      return res.status(404).json({ message: "Brand not found" });
-    }
-
-    // Step 2: Build search conditions
-    let conditions = { brand: brand._id };
-
-    // (a) Search bar (product name)
+    const conditions = {};
+    if (brand) conditions.brand = brand._id;
     if (q) {
-      const regex = new RegExp(q, "i"); // case-insensitive search
-      conditions.name = regex;
+      const safe = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      conditions.name = new RegExp(safe, "i");
     }
-
-    // (b) Category filter
     if (category) {
-      const cat = await Category.findOne({ name: category });
-      if (cat) {
-        conditions.category = cat._id;
-      }
+      const cat = await Category.findOne({ name: new RegExp(`^${String(category).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") });
+      if (cat) conditions.category = cat._id;
     }
 
-    // Step 3: Query products
-    const products = await Product.find(conditions).populate("brand category");
+    const total = await Product.countDocuments(conditions);
+    const products = await Product.find(conditions)
+      .populate("brand category")
+      .skip(skip)
+      .limit(limit)
+      .exec();
 
-    res.json(products);
+    const pages = Math.ceil(total / limit) || 1;
+    res.json({ products, total, page, pages });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

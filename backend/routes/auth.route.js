@@ -1,5 +1,11 @@
 import express from "express";
-import {getFilteredProducts,addBrand, addCategory, addMultipleCategories,addProduct} from "../controllers/auth.controller.js";
+import {
+  getFilteredProducts,
+  addBrand,
+  addCategory,
+  addMultipleCategories,
+  addProduct,
+} from "../controllers/auth.controller.js";
 const router = express.Router();
 
 router.get("/brands/:brandName", getFilteredProducts);
@@ -10,4 +16,3 @@ router.post("/categories/multiple", addMultipleCategories);
 router.post("/product", addProduct);
 
 export default router;
-
